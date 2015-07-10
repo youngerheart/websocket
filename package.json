@@ -1,5 +1,5 @@
 {
-  "name": "websocket",
+  "name": "node-websocket",
   "version": "0.0.1",
   "description": "parse socket buffer, add event emitter and cookie id",
   "scripts": {
@@ -11,7 +11,8 @@
     "url": "git@github.com:younger/websocket.git"
   },
   "keywords": [
-    "websocket"
+    "websocket",
+    "node"
   ],
   "author": "younger@blog.timehub.cc",
   "license": "MIT",

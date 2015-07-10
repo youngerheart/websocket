@@ -2,14 +2,17 @@
 
 parse socket buffer, add event emitter and cookie id
 
-## install
-
-    npm install
+## download & install
+    // in package.json
+    "dependencies": {
+      "node-websocket": ">=0.0.1"
+    }
+    $ npm install
 
 ## config & run
 
     // in your nodeserver file
-    var ws = require('./websocket').init;
+    var ws = require('node-websocket').init;
     // bind events
     ws.on('join', function(data, socketId) {
       //send message
