@@ -100,7 +100,7 @@ Socket.prototype.start = function(port) {
         // 连接上WS这个字符串，并做一次sha1运算，最后转换成Base64
         key = crypto.createHash('sha1').update(key + WS).digest('base64');
         // 解析出socketId
-        socketId = head.match(/Cookie: (.+)/)[1];
+        if(socketId) socketId = head.match(/Cookie: (.+)/)[1];
         if(socketId) socketId = socketId.match(/socketId=(.+)(?:;)?(?: )?/)[1];
         // 输出返回给客户端的数据，这些字段都是必须的
         o.write('HTTP/1.1 101 Switching Protocols\r\n');
