@@ -27,7 +27,7 @@ parse socket buffer, add event emitter and cookie id
       }
     }));
 
-## all & methods
+## all methods
 
 * Socket.prototype.on(eventName, callback);
 * Socket.prototype.emit(eventName, arg1, arg2, ...);
