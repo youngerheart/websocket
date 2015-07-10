@@ -2,13 +2,10 @@
   "name": "websocket",
   "version": "0.0.1",
   "description": "parse socket buffer, add event emitter and cookie id",
-  "dependencies": {
-    "web-node-server": "0.0.5"
-  },
   "scripts": {
-    "start": "node server.js"
+    "start": "node index.js"
   },
-  "main": "server.js",
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "git@github.com:younger/websocket.git"
