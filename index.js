@@ -109,7 +109,7 @@ Socket.prototype.start = function(port) {
         // 这个字段带上服务器处理后的KEY
         o.write('Sec-WebSocket-Accept: ' + key + '\r\n');
         // 做一个cookieID
-        if(!socketId) o.write('Set-Cookie: socketId=' + uuid.v4());
+        if(!socketId) o.write('Set-Cookie: socketId=' + uuid.v4() + '\r\n');
         // 输出空行，使HTTP头结束
         o.write('\r\n');
       }else{
