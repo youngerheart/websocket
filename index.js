@@ -115,17 +115,19 @@ Socket.prototype.start = function(port) {
       }else{
         //数据处理
         var json = decodeDataFrame(buffer);
-        var buf;
         if(!json || json.Opcode !== 1) {
           // 结束连接
-          buf = new Buffer('\0\0some error occurs,or Opcode = 8');
-          o.write(encodeDataFrame({FIN:1,Opcode:8,PayloadData:buf}));
+          o.write(encodeDataFrame({
+            FIN: 1,
+            Opcode: 8,
+            PayloadData: 'some error occurs,or Opcode = 8'
+          }));
           return;
         }
         data = JSON.parse(json.PayloadData);
         // bind events
         if(data.event) {
-          buf = new Buffer(that.emit(data.event, data.data, socketId) || {});
+          that.emit(data.event, data.data, socketId);
         }
       };
     });
