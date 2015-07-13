@@ -132,7 +132,7 @@ Socket.prototype.start = function(port) {
       };
     });
   }).listen(port);
-  console.log('websocket' + 'running in at port ' + port);
+  console.log('websocket' + 'running at port ' + port);
 }
 
 exports.init = new Socket();

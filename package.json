@@ -1,6 +1,6 @@
 {
   "name": "node-websocket",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "parse socket buffer, add event emitter and cookie id",
   "scripts": {
     "start": "node index.js"
