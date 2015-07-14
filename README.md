@@ -14,6 +14,7 @@ parse socket buffer, add event emitter and cookie id
     // in your nodeserver file
     var ws = require('node-websocket').init;
     // bind events
+    ws.on('connection', function(socketId) {});
     ws.on('join', function(data, socketId) {
       //send message
       ws.send('yes! it will send to frontend');
@@ -30,10 +31,10 @@ parse socket buffer, add event emitter and cookie id
       }
     }));
 
-## all methods
-
+## all events & methods
+* 'connection' event, emit when connect success
 * Socket.prototype.on(eventName, callback);
-* Socket.prototype.emit(eventName, arg1, arg2, ...);
+* Socket.prototype.emit(eventName, data, socketId);
 * Socket.prototype.send(data);
 * Socket.prototype.start(port);
 

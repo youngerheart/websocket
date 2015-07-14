@@ -83,7 +83,7 @@ Socket.prototype = new EventEmitter();
 
 Socket.prototype.send = function(data) {
   if(!this.conn) return;
-  this.conn.write(encodeDataFrame({FIN:1,Opcode:1,PayloadData: (new Buffer(data))}));
+  this.conn.write(encodeDataFrame({FIN:1,Opcode:1,PayloadData: data}));
 }
 
 Socket.prototype.start = function(port) {
@@ -110,6 +110,8 @@ Socket.prototype.start = function(port) {
         o.write('Sec-WebSocket-Accept: ' + key + '\r\n');
         // 做一个cookieID
         if(!socketId) o.write('Set-Cookie: socketId=' + uuid.v4() + '\r\n');
+        // 成功连接事件
+        that.emit('connection', socketId);
         // 输出空行，使HTTP头结束
         o.write('\r\n');
       }else{
