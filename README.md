@@ -38,9 +38,9 @@ parse socket buffer, add event emitter and cookie id
 * Server.prototype.start(port)
 * Server 'connection' event, emit when connect success, create socket object in callback
 * Server 'close' event, emit when connect success(some error occurs)
+* Server.prototype.on(eventName, callback);
+* Server.prototype.emit(eventName, data);
 * socket.id, ID in cookie,key: socketId
-* Socket.prototype.on(eventName, callback);
-* Socket.prototype.emit(eventName, data, socketId);
 * Socket.prototype.send(data);
 
 ## bug && suggestion?
