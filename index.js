@@ -3,6 +3,8 @@ var crypto=require('crypto');
 
 var WS='258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 
+var stream = [];
+
 var decodeDataFrame = function(buffer) {
   var i = 0,j,s;
   var frame = {
@@ -17,23 +19,27 @@ var decodeDataFrame = function(buffer) {
     frame.PayloadLength = (buffer[i ++] << 8) + buffer[i ++];
   if(frame.PayloadLength === 127)
     i+=4, // 长度一般用四字节的整型，前四个字节通常为长整形留空的
-    frame.PayloadLength = (buffer[i ++] << 24) + (buffer[i ++] << 16) + (buffer[i ++] << 8) + buffer[i ++];
+    frame.PayloadLength = (buffer[i ++] << 24) + (buffer[i ++] << 16) + (buffer[i ++] << 8) + stream[i ++];
   // 判断是否使用掩码
   if(frame.Mask){
     // 获取掩码实体
     frame.MaskingKey = [buffer[i ++],buffer[i ++],buffer[i ++],buffer[i ++]];
     // 对数据和掩码做异或运算
-  for(j = 0, s=[]; j < frame.PayloadLength; j ++)
-    s.push(buffer[i + j] ^ frame.MaskingKey[j % 4]);
+  for(j = 0; j < frame.PayloadLength; j ++){
+      stream.push(buffer[i + j] ^ frame.MaskingKey[j % 4]);
+    }
   } else {
-    s = buffer.slice(i, frame.PayloadLength); // 否则直接使用数据
+    stream = buffer.slice(i, frame.PayloadLength); // 否则直接使用数据
   }
+  if(!frame.FIN) return false;
   // 数组转换成缓冲区来使用
-  s = new Buffer(s);
+  if(stream.length) stream = new Buffer(stream);
+  
   // 如果有必要则把缓冲区转换成字符串来使用
-  if(frame.Opcode === 1) s = s.toString();
+  if(frame.Opcode === 1) stream = stream.toString();
   // 设置上数据部分
-  frame.PayloadData = s;
+  frame.PayloadData = stream;
+  stream = [];
   // 返回数据帧
   return frame;
 }
@@ -60,9 +66,14 @@ var encodeDataFrame = function(data){
   return Buffer.concat([new Buffer(head), body]);
 };
 
+// 启动服务
+var Server = function() {
+
+}
+
 // 本体
-var Socket = function() {
-  this.conn = null;
+var Socket = function(conn) {
+  this.conn = conn;
 }
 
 // 一个处理事件的类
@@ -79,19 +90,19 @@ EventEmitter.prototype.emit = function(eventName) {
   this.events[eventName].apply(null, Array.prototype.slice.call(arguments, 1));
 }
 
-Socket.prototype = new EventEmitter();
+Server.prototype = new EventEmitter();
 
 Socket.prototype.send = function(data) {
   if(!this.conn) return;
   this.conn.write(encodeDataFrame({FIN:1,Opcode:1,PayloadData: data}));
 }
 
-Socket.prototype.start = function(port) {
+Server.prototype.start = function(port) {
   var that = this;
   require('net').createServer(function(o){
     var key;
+    var socket;
     var socketId;
-    that.conn = o;
     o.on('data', function(buffer) {
       if(!key){
         // 获取发送过来的KEY
@@ -113,26 +124,32 @@ Socket.prototype.start = function(port) {
           socketId = uuid.v4();
           o.write('Set-Cookie: socketId=' + socketId + '\r\n');
         }
-        // 成功连接事件
-        that.emit('connection', socketId);
         // 输出空行，使HTTP头结束
         o.write('\r\n');
+        // 成功连接事件，创建socket
+        socket = new Socket(o);
+        socket.id = socketId;
+        that.emit('connection', socket);
       }else{
         //数据处理
         var json = decodeDataFrame(buffer);
-        if(!json || json.Opcode !== 1) {
+        if(!json) return;
+        if(!json || json.Opcode === 8) {
           // 结束连接
           o.write(encodeDataFrame({
             FIN: 1,
             Opcode: 8,
             PayloadData: 'some error occurs,or Opcode = 8'
           }));
+          that.emit('close', socketId);
           return;
         }
         data = JSON.parse(json.PayloadData);
         // bind events
         if(data.event) {
-          that.emit(data.event, data.data, socketId);
+          that.emit(data.event, data.data);
+        } else {
+          that.emit('message', data.data);
         }
       };
     });
@@ -140,4 +157,4 @@ Socket.prototype.start = function(port) {
   console.log('websocket' + 'running at port ' + port);
 }
 
-exports.init = new Socket();
+exports.init = new Server();
