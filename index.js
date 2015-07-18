@@ -71,10 +71,22 @@ var Server = function() {
 
 }
 
+var pingData = null;
+
 // 本体
 var Socket = function(conn) {
   this.conn = conn;
-}
+  this.id = null;
+  // 设置一个轮询，用于查看这个连接是不是还连着
+  var that = this;
+  pingData = {
+    event: '__ping',
+    data: {id: that.id}
+  };
+  setInterval(function() {
+    that.conn.write(encodeDataFrame({FIN:1,Opcode:9, PayloadData: pingData}));
+  }, 1000);
+};
 
 // 一个处理事件的类
 function EventEmitter() {
@@ -83,19 +95,19 @@ function EventEmitter() {
 // 绑定事件
 EventEmitter.prototype.on = function(eventName, callback) {
   this.events[eventName] = callback;
-}
+};
 // 触发事件
 EventEmitter.prototype.emit = function(eventName) {
   if(!this.events[eventName]) return;
   this.events[eventName].apply(null, Array.prototype.slice.call(arguments, 1));
-}
+};
 
 Server.prototype = new EventEmitter();
 
 Socket.prototype.send = function(data) {
   if(!this.conn) return;
   this.conn.write(encodeDataFrame({FIN:1,Opcode:1,PayloadData: data}));
-}
+};
 
 Server.prototype.start = function(port) {
   var that = this;
@@ -134,17 +146,24 @@ Server.prototype.start = function(port) {
         //数据处理
         var json = decodeDataFrame(buffer);
         if(!json) return;
-        if(!json || json.Opcode === 8) {
+        console.log(json);
+        if(!json) {
           // 结束连接
           o.write(encodeDataFrame({
             FIN: 1,
             Opcode: 8,
-            PayloadData: 'some error occurs,or Opcode = 8'
+            PayloadData: 'some error occurs'
           }));
           that.emit('close', socketId);
           return;
         }
+        if(json.Opcode === 10) return;
         data = JSON.parse(json.PayloadData);
+        if(json.Opcode === 8) {
+          console.log(data.data.id);
+          that.emit('close', data.data.id);
+          return;
+        }
         // bind events
         if(data.event) {
           that.emit(data.event, data.data);
