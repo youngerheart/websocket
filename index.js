@@ -36,7 +36,7 @@ var decodeDataFrame = function(buffer) {
   if(stream.length) stream = new Buffer(stream);
   
   // 如果有必要则把缓冲区转换成字符串来使用
-  if(frame.Opcode === 1) stream = stream.toString();
+  stream = stream.toString();
   // 设置上数据部分
   frame.PayloadData = stream;
   stream = [];
@@ -71,21 +71,23 @@ var Server = function() {
 
 }
 
-var pingData = null;
+var pingInterval = {};
 
 // 本体
-var Socket = function(conn) {
+var Socket = function(conn, id) {
   this.conn = conn;
-  this.id = null;
+  this.id = id;
   // 设置一个轮询，用于查看这个连接是不是还连着
   var that = this;
-  pingData = {
+  that.pingData = JSON.stringify({
     event: '__ping',
-    data: {id: that.id}
+    data: {id: id}
+  });
+  var ping = function() {
+    that.conn.write(encodeDataFrame({FIN:1,Opcode:9, PayloadData: that.pingData}));
   };
-  setInterval(function() {
-    that.conn.write(encodeDataFrame({FIN:1,Opcode:9, PayloadData: pingData}));
-  }, 1000);
+  ping();
+  pingInterval[this.id] = setInterval(ping, 1000);
 };
 
 // 一个处理事件的类
@@ -105,16 +107,32 @@ EventEmitter.prototype.emit = function(eventName) {
 Server.prototype = new EventEmitter();
 
 Socket.prototype.send = function(data) {
-  if(!this.conn) return;
+  // 在用户没有销毁socket对象就关闭之并且还想发送数据的时候进行提示
+  if(!this.conn || !pingInterval[this.id]) {
+    console.log('WebSocket Error: This socket has been ended by the other party');
+    console.log('You should emit server\'s close event and delete socket object when frontend exit');
+    return;
+  }
   this.conn.write(encodeDataFrame({FIN:1,Opcode:1,PayloadData: data}));
+};
+
+// 主动调用close方法
+Socket.prototype.close = function(reason) {
+  this.conn.write(encodeDataFrame({FIN:1,Opcode:8,PayloadData: reason}));
+  this.conn.end();
+  clearInterval(pingInterval[this.id]);
+  delete pingInterval[this.id];
+  that.emit('close', this.id);
 };
 
 Server.prototype.start = function(port) {
   var that = this;
   require('net').createServer(function(o){
     var key;
-    var socket;
+    var socket = null;
     var socketId;
+    var json;
+    var pingId;
     o.on('data', function(buffer) {
       if(!key){
         // 获取发送过来的KEY
@@ -139,31 +157,32 @@ Server.prototype.start = function(port) {
         // 输出空行，使HTTP头结束
         o.write('\r\n');
         // 成功连接事件，创建socket
-        socket = new Socket(o);
-        socket.id = socketId;
+        socket = new Socket(o, socketId);
         that.emit('connection', socket);
+        socketId = null;
       }else{
         //数据处理
-        var json = decodeDataFrame(buffer);
+        json = decodeDataFrame(buffer);
         if(!json) return;
-        console.log(json);
         if(!json) {
-          // 结束连接
-          o.write(encodeDataFrame({
-            FIN: 1,
-            Opcode: 8,
-            PayloadData: 'some error occurs'
-          }));
-          that.emit('close', socketId);
+          console.log('WebSocket Error: Can\'t parse buffer data');
           return;
         }
-        if(json.Opcode === 10) return;
-        data = JSON.parse(json.PayloadData);
+        // 经过多次试验，在前端断开后均会在code为10之后立即传回8
+        // 第一次ping时即返回8，则取socketId.
         if(json.Opcode === 8) {
-          console.log(data.data.id);
-          that.emit('close', data.data.id);
+          pingId = pingId ? pingId : socketId;
+          clearInterval(pingInterval[pingId]);
+          delete pingInterval[pingId];
+          o.end();
+          that.emit('close', pingId);
           return;
         }
+        data = JSON.parse(json.PayloadData);
+        if(json.Opcode === 10) {
+          pingId = data.data.id;
+          return
+        };
         // bind events
         if(data.event) {
           that.emit(data.event, data.data);
@@ -174,6 +193,6 @@ Server.prototype.start = function(port) {
     });
   }).listen(port);
   console.log('websocket' + 'running at port ' + port);
-}
+};
 
 exports.init = new Server();
