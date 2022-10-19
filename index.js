@@ -41,7 +41,7 @@ function encodeDataFrame(frame){
     frame.Opcode = 2;
     body = frame.PayloadData;
   } else { //Others
-    frame.Opcode = frame.Opcode||1;
+    frame.Opcode = frame.Opcode || 1;
     body = new Buffer(frame.PayloadData);
   }
   var l = body.length;
@@ -76,16 +76,12 @@ var Socket = function(conn, id) {
   this.id = id;
   // 设置一个轮询，用于查看这个连接是不是还连着
   var that = this;
-  that.pingData = JSON.stringify({
-    event: '__ping',
-    data: {id: id}
-  });
   function ping() {
   if(that.conn && that.conn.readyState=='open')
-    that.conn.write(encodeDataFrame({FIN:1,Opcode:9, PayloadData: that.pingData}));
+    that.conn.write(encodeDataFrame({FIN:1,Opcode:9, PayloadData: "ping"}));
   };
   ping();
-  pingInterval[this.id] = setInterval(ping, 1000);
+  pingInterval[this.id] = setInterval(ping, 30000);
 };
 
 // 绑定事件
@@ -167,14 +163,12 @@ function parseFrame(svr,socket,buffer){
     clearInterval(pingInterval[socket.id]);
     delete pingInterval[socket.id];
     socket.conn.end();
-    socket.closed = true;
+    socket.closed=true;
     svr.emit('close', socket);
     return;
   }
   if(frame.Opcode === 10) { //pong
-    data = JSON.parse(frame.PayloadData.toString());//把缓冲区转换成字符串来
-    if(socket.id != data.data.id) console.error("ping id error ");
-    console.error("pong",socket.id);
+    //console.error("pong",socket.id);
     return
   }
   //console.log('WebSocket Recive: ',frame);
